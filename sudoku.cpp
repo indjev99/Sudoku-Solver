@@ -1,10 +1,20 @@
 #include <iostream>
 #include <cassert>
-#include <memory>
+#include <sstream>
 #include <string>
+#include <chrono>
+#include <memory>
 #include <map>
 
 typedef unsigned int uint;
+
+constexpr uint base = 3;
+constexpr uint maxWidth = base > 3 ? 3 : 1;
+
+constexpr bool fromChars = true;
+
+constexpr bool BENCHMARK = true;
+constexpr bool DEBUG = false;
 
 template <uint BASE>
 struct Sudoku
@@ -335,6 +345,7 @@ struct Sudoku
             {
                 bestTypeIdx = typeIdx;
                 minOpts = opts.numOpts;
+                if (minOpts == 2) break;
             }
         }
 
@@ -351,13 +362,13 @@ struct Sudoku
 
             IdxOpt cellVal = typeIdxOptToCellVal(bestTypeIdx, opt);
 
-            std::cout << '+';
+            if constexpr (DEBUG) std::cerr << '+';
 
             next = *this;
             next.set(cellVal.idx, cellVal.opt);
             next.solve();
 
-            std::cout << '-';
+            if constexpr (DEBUG) std::cerr << '-';
 
             if (!next.impossible && next.numSet == N * N)
             {
@@ -369,15 +380,16 @@ struct Sudoku
         impossible = true;
     }
 
-    void solve(uint maxWidth = 3)
+    void solve(uint maxWidth = 1)
     {
         assert(maxWidth >= 1);
 
         while (caseAnalysis(maxWidth))
         {
-            std::cout << ".";
+            if constexpr (DEBUG) std::cerr << ".";
         }
-        std::cout << "!";
+
+        if constexpr (DEBUG) std::cerr << "!";
 
         bruteforce();
     }
@@ -386,6 +398,18 @@ struct Sudoku
     {
         if (!cells[cell].isOpt[val]) impossible = true;
         set(cell, val);
+    }
+
+    static void printVal(std::ostream& out, uint val)
+    {
+        if (N > 64) out << val;
+        else
+        {
+            if (val < 10) out << (char) ('0' + val);
+            else if (val < 36) out << (char) ('A' + val - 10);
+            else if (val < 62) out << (char) ('a' + val - 36);
+            else out << (char) ('#' + val - 62);
+        }
     }
 
     void print(std::ostream& out) const
@@ -407,7 +431,7 @@ struct Sudoku
             if (col == 0 && row > 0) out << "\n";
             if (col == 0 && row > 0 && row % BASE == 0) out << "\n";
 
-            if (cells[cell].numOpts == 1) out << cells[cell].get() + 1;
+            if (cells[cell].numOpts == 1) printVal(out, cells[cell].get() + 1);
             else out << ".";
         }
 
@@ -421,7 +445,11 @@ struct Sudoku
             std::string s;
             in >> s;
             if (s == ".") return 0;
-            return std::stoi(s);
+            else if (s.size() == 1 && isdigit(s[0])) return s[0] - '0';
+            else if (s.size() == 1 && isupper(s[0])) return s[0] - 'A' + 10;
+            else if (s.size() == 1 && islower(s[0])) return s[0] - 'a' + 36;
+            else if (s.size() == 1 && s[0] >= '#' && s[0] < '0') return s[0] - 'a' + 62;
+            else return std::stoi(s);
         }
         else
         {
@@ -432,13 +460,17 @@ struct Sudoku
             }
             while (c == '\n' || c == '\r');
             if (c == ' ' || c == '.') return 0;
-            charMap.insert({c, charMap.size() + 1});
-            std::cerr << c << " : " << charMap[c] << "\n";
-            return charMap[c];
+            else if (isdigit(c)) return c - '0';
+            else if (isupper(c)) return c - 'A' + 10;
+            else
+            {
+                charMap.insert({c, charMap.size() + 36});
+                return charMap[c];
+            }
         }
     }
 
-    void input(std::istream& in, bool fromChars = false)
+    void read(std::istream& in, bool fromChars = false)
     {
         *this = Sudoku();
         std::map<char, uint> charMap;
@@ -454,17 +486,54 @@ struct Sudoku
 template <uint N>
 const typename Sudoku<N>::Maps Sudoku<N>::maps = constructMaps();
 
+Sudoku<base> sudoku;
+
+void benchmark()
+{
+    uint cnt = 0;
+    std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
+    while (std::cin)
+    {
+        std::string line;
+        std::getline(std::cin, line);
+        std::stringstream stream(line);
+        if (line == "") continue;
+
+        sudoku.read(stream, fromChars);
+        sudoku.solve(maxWidth);
+        if constexpr (DEBUG) std::cerr << "\n";
+
+        ++cnt;
+        if (cnt % 1000 == 0)
+        {
+            std::chrono::high_resolution_clock::time_point currTime = std::chrono::high_resolution_clock::now();
+            double time = std::chrono::duration_cast<std::chrono::duration<double>>(currTime - startTime).count();
+            std::cerr << cnt << ": " << cnt / time << "\n";
+        }
+    }
+
+    std::chrono::high_resolution_clock::time_point currTime = std::chrono::high_resolution_clock::now();
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(currTime - startTime).count();
+    std::cerr << cnt << ": " << cnt / time << "\n";
+}
+
+void runOnce()
+{
+    sudoku.read(std::cin, fromChars);
+    sudoku.print(std::cout);
+
+    sudoku.solve(maxWidth);
+    if constexpr (DEBUG) std::cerr << "\n";
+
+    std::cout << "\n";
+    sudoku.print(std::cout);
+}
+
 int main()
 {
-    Sudoku<3> orig;
-    orig.input(std::cin, false);
-
-    orig.print(std::cout);
-
-    orig.solve(3);
-    std::cout << "\n\n";
-    
-    orig.print(std::cout);
+    if (BENCHMARK) benchmark();
+    else runOnce();
 
     return 0;
 }

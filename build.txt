@@ -1,1 +1,1 @@
-g++ -O3  -std=c++20 -Wl,--stack,1073741824 -Wall sudoku.cpp -o sudoku.exe
+g++ -O3 -std=c++20 -Wl,--stack,1073741824 -Wall sudoku.cpp -o sudoku.exe
