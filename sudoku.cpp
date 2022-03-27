@@ -8,18 +8,19 @@
 
 typedef unsigned int uint;
 
-constexpr uint base = 3;
-constexpr uint maxWidth = base > 3 ? 3 : 1;
+constexpr uint R = 3;
+constexpr uint C = 3;
+constexpr uint maxWidth = R * C > 10 ? 3 : 1;
 
-constexpr bool fromChars = true;
+constexpr bool fromChars = false;
 
-constexpr bool BENCHMARK = true;
+constexpr bool BENCHMARK = false;
 constexpr bool DEBUG = false;
 
-template <uint BASE>
+template <uint R, uint C>
 struct Sudoku
 {
-    static constexpr uint N = BASE * BASE;
+    static constexpr uint N = R * C;
 
     static constexpr uint NUM_TYPES = 4;
     static constexpr uint T_CELL = 0;
@@ -52,8 +53,8 @@ struct Sudoku
         {
             uint row = cell / N;
             uint col = cell % N;
-            uint box = row / BASE * BASE + col / BASE;
-            uint boxOpt = row % BASE * BASE + col % BASE;
+            uint box = row / R * R + col / C;
+            uint boxOpt = row % R * C + col % C;
 
             maps.cellToRowOpt[cell] = {row, col};
             maps.cellToColOpt[cell] = {col, row};
@@ -426,10 +427,10 @@ struct Sudoku
             uint col = cell % N;
 
             if (col > 0) out << " ";
-            if (col > 0 && col % BASE == 0) out << " ";
+            if (col > 0 && col % C == 0) out << " ";
 
             if (col == 0 && row > 0) out << "\n";
-            if (col == 0 && row > 0 && row % BASE == 0) out << "\n";
+            if (col == 0 && row > 0 && row % R == 0) out << "\n";
 
             if (cells[cell].numOpts == 1) printVal(out, cells[cell].get() + 1);
             else out << ".";
@@ -483,10 +484,10 @@ struct Sudoku
     }
 };
 
-template <uint N>
-const typename Sudoku<N>::Maps Sudoku<N>::maps = constructMaps();
+template <uint R, uint C>
+const typename Sudoku<R, C>::Maps Sudoku<R,C>::maps = Sudoku<R, C>::constructMaps();
 
-Sudoku<base> sudoku;
+Sudoku<R, C> sudoku;
 
 void benchmark()
 {
